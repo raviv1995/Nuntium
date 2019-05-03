@@ -1,4 +1,4 @@
-import newspaper
+import feedparser
 import asyncio
 import time
 
@@ -8,39 +8,26 @@ class feedReader():
         pass
 
     async def readArticles(self, site):
-        paper = newspaper.build(site, language='en')
-        feed = []
-        for article in paper.articles:
-            try:
-                article.download()
-                article.parse()
-                feed.append(article)
-            except Exception as e:
-                print(e)
-                continue
-        return feed
+        try:
+            paper = feedparser.parse(site)
+            feed = []
+            await asyncio.gather(self.printArticles(paper))
+        except Exception as e:
+            print(e)
 
-def printArticles(articles):
-    with open('/home/pbs/Desktop/feeds', 'w+') as f:
-        f.write('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n')
-        for article in articles:
-            f.write('\n####################################################################\n')
-            f.write(article.title)
-            f.write('\n')
-            f.write(article.text)
+    async def printArticles(self, articles):
+        with open('/home/pbs/Desktop/feeds', 'w+') as f:
+            for article in articles:
+                f.write('\n####################################################################\n')
+                f.write(str(articles))
 
 async def main():
     tasks = []
     feed = feedReader()
-    sites = ['https://edition.cnn.com/', 'https://www.thehindu.com/', 'https://in.reuters.com/']
+    sites = ['http://feeds.bbci.co.uk/news/rss.xml', 'http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml']
     for site in sites:
         tasks.append(asyncio.ensure_future(feed.readArticles(site)))
     p = await asyncio.gather(*tasks)
-    i=0
-    for c in p:
-        print(i)
-        i=i+1
-        printArticles(c)
 
 s = time.perf_counter()
 loop = asyncio.get_event_loop()
