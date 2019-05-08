@@ -1,42 +1,37 @@
 import feedparser
 import asyncio
-import time
+from datetime import datetime
 
 
 class feedReader():
-    def __init__(self):
-        pass
+    def __init__(self, sites):
+        self.sites = sites
 
-    async def readArticles(self, site):
+    async def _main(self):
+        tasks = []
+        for site in self.sites:
+            tasks.append(asyncio.ensure_future(self.parseArticles(site)))
+        feeds = await asyncio.gather(*tasks)
+        return feeds
+
+    def main(self):
+        loop = asyncio.get_event_loop()
         try:
-            paper = feedparser.parse(site)
-            feed = []
-            await asyncio.gather(self.printArticles(paper))
+            feeds = loop.run_until_complete(self._main())
+            return feeds
         except Exception as e:
             print(e)
+        finally:
+            loop.close()
 
-    async def printArticles(self, articles):
-        with open('/home/pbs/Desktop/feeds', 'w+') as f:
+    async def parseArticles(self, site):
+        try:
+            feeds = []
+            paper = feedparser.parse(site)
+            articles = paper.get('entries')
             for article in articles:
-                f.write('\n####################################################################\n')
-                f.write(str(articles))
-
-async def main():
-    tasks = []
-    feed = feedReader()
-    sites = ['http://feeds.bbci.co.uk/news/rss.xml', 'http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml']
-    for site in sites:
-        tasks.append(asyncio.ensure_future(feed.readArticles(site)))
-    p = await asyncio.gather(*tasks)
-
-s = time.perf_counter()
-loop = asyncio.get_event_loop()
-try:
-    loop.run_until_complete(main())
-except Exception as e:
-    print(e)
-finally:
-    loop.close()
-    elapsed = time.perf_counter() - s
-    print(f"Executed in {elapsed:0.2f} seconds.")
-
+                articleDict = {'title':article.get('title'), 'summary':article.get('summary'), 'link':str(article.get('link'))}    
+                feeds.append(articleDict)
+            return feeds
+        except Exception as e:
+            print(e)
