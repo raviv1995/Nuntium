@@ -3,6 +3,7 @@ import asyncio
 import nltk
 import time
 from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
 from feed import feedReader
 from constants import *
 
@@ -11,6 +12,7 @@ class Cluster:
     def __init__(self):
         sites = ['http://feeds.bbci.co.uk/news/rss.xml', 'http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml', 'http://feeds.reuters.com/reuters/INtopNews']
         feed = feedReader(sites)
+        self.clusters = []
         self.feeds = feed.main()
         self.stopwords = set(stopwords.words('english'))
         self.flatList = self.flattenList()
@@ -28,11 +30,12 @@ class Cluster:
         clearFile()
         clusterNumber = 0
         for feedA in self.flatList:
-            clusterNumber += 1
             try:
                 if not feedA['cluster']<clusterNumber:
                     feedA['cluster'] = clusterNumber
             except KeyError:
+                print(clusterNumber)
+                clusterNumber += 1
                 feedA['cluster'] = clusterNumber
             for feedB in self.flatList:
                 if feedA == feedB:
@@ -56,8 +59,8 @@ class Cluster:
                     dice = self.calculateDice(A,B,AND)
                     if cosine >= COSINE_THRESHOLD and dice >= DICE_THRESHOLD:
                         feedB['cluster'] = clusterNumber
-                    # putInFile(feedA,feedB,articleMatrix,cosine,dice)
-        writeToFile(sorted(self.flatList, key = lambda i: i['cluster']))    
+                    putInFile(feedA,feedB,articleMatrix,cosine,dice)
+        # writeToFile(sorted(self.flatList, key = lambda i: i['cluster']))    
 
     def calculateCosine(self, A, B, AND):
         return (AND)/math.sqrt(A*B)
@@ -67,21 +70,28 @@ class Cluster:
     
     def makeMatrix(self, articleA, articleB):
         matrix = {}
+        stemmer = PorterStemmer()
         articleStringA = articleA.get('title') + ' ' + articleA.get('summary')
         articleArrayA = articleStringA.split()
+        stemmedArticleArrayA = []
+        for item in articleArrayA:
+            stemmedArticleArrayA.append(stemmer.stem(item))
         articleStringB = articleB.get('title') + ' ' + articleB.get('summary')
         articleArrayB = articleStringB.split()
-        words = articleArrayA + articleArrayB
+        stemmedArticleArrayB = []
+        for item in articleArrayB:
+            stemmedArticleArrayB.append(stemmer.stem(item))
+        words = stemmedArticleArrayA + stemmedArticleArrayB
         for word in words:
             if word in self.stopwords:
                 continue
             if word in matrix.keys():
                 pass
-            if word in articleArrayA and word in articleArrayB:
+            if word in stemmedArticleArrayA and word in stemmedArticleArrayB:
                 matrix[word] = [1,1]
-            elif word in articleArrayA:
+            elif word in stemmedArticleArrayA:
                 matrix[word] = [1,0]
-            elif word in articleArrayB:
+            elif word in stemmedArticleArrayB:
                 matrix[word] = [0,1]
         return matrix
 

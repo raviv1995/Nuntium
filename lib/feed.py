@@ -1,5 +1,6 @@
 import feedparser
 import asyncio
+import re
 from datetime import datetime
 
 
@@ -30,8 +31,13 @@ class feedReader():
             paper = feedparser.parse(site)
             articles = paper.get('entries')
             for article in articles:
-                articleDict = {'title':article.get('title'), 'summary':article.get('summary'), 'link':str(article.get('link'))}    
+                articleDict = {'title':article.get('title'), 'summary':self.striphtml(article.get('summary')), 'link':str(article.get('link'))}    
                 feeds.append(articleDict)
             return feeds
         except Exception as e:
             print(e)
+    
+    def striphtml(self, data):
+        p = re.compile(r'<.*?>')
+        return p.sub('', data)
+
