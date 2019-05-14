@@ -10,7 +10,7 @@ from constants import *
 class Cluster:
 
     def __init__(self):
-        sites = ['http://feeds.bbci.co.uk/news/rss.xml', 'http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml', 'http://feeds.reuters.com/reuters/INtopNews']
+        sites = readCsv()
         feed = feedReader(sites)
         self.clusters = []
         self.feeds = feed.main()
@@ -18,6 +18,8 @@ class Cluster:
         self.flatList = self.flattenList()
         # print(self.flatList)
         self.clusterArticles()
+        self.clusterClusters()
+        writeClustersToFile(self.clusters)
     
     def flattenList(self):
         flatList = []
@@ -28,15 +30,18 @@ class Cluster:
 
     def clusterArticles(self):
         clearFile()
-        clusterNumber = 0
+        clusterNumber = -1
         for feedA in self.flatList:
             try:
-                if not feedA['cluster']<clusterNumber:
-                    feedA['cluster'] = clusterNumber
+                if feedA['cluster'] > clusterNumber:
+                    clusterNumber = feedA['cluster'] 
             except KeyError:
-                print(clusterNumber)
                 clusterNumber += 1
                 feedA['cluster'] = clusterNumber
+                try:
+                    self.clusters.insert(clusterNumber, self.clusters[clusterNumber].append(feedA))
+                except IndexError:
+                    self.clusters.insert(clusterNumber, [feedA])
             for feedB in self.flatList:
                 if feedA == feedB:
                     continue
@@ -59,8 +64,47 @@ class Cluster:
                     dice = self.calculateDice(A,B,AND)
                     if cosine >= COSINE_THRESHOLD and dice >= DICE_THRESHOLD:
                         feedB['cluster'] = clusterNumber
-                    putInFile(feedA,feedB,articleMatrix,cosine,dice)
-        # writeToFile(sorted(self.flatList, key = lambda i: i['cluster']))    
+                        self.clusters[clusterNumber].append(feedB)
+                    # putInFile(feedA,feedB,articleMatrix,cosine,dice)
+        # writeToFile(sorted(self.flatList, key = lambda i: i['cluster']))
+        # writeClustersToFile(self.clusters)
+
+    def clusterClusters(self):
+        for clusterA in self.clusters:
+            indexA = self.clusters.index(clusterA)
+            feedA = self.articlefy(clusterA)
+            for clusterB in self.clusters:
+                if clusterA ==  clusterB:
+                    continue
+                feedB = self.articlefy(clusterB)
+                articleMatrix = self.makeMatrix(feedA, feedB)
+                AND = 0
+                A = 0
+                B = 0
+                for word in articleMatrix.keys():
+                    value = articleMatrix.get(word)
+                    if value == [1,1]:
+                        A += 1
+                        B += 1
+                        AND += 1
+                    elif value == [1,0]:
+                        A += 1
+                    elif value == [0,1]:
+                        B += 1
+                cosine = self.calculateCosine(A,B,AND)
+                dice = self.calculateDice(A,B,AND)
+                if cosine >= COSINE_RE_THRESHOLD and dice >= DICE_RE_THRESHOLD:
+                    clusterC = clusterA + clusterB
+                    self.clusters[indexA] = clusterC
+                    feedA = self.articlefy(clusterC)
+                    self.clusters.remove(clusterB)
+
+    def articlefy(self, cluster):
+        retDict = {'title':'','summary':''}
+        for feed in cluster:
+            retDict['title'] = retDict['title'] + ' ' + feed.get('title')
+            retDict['summary'] = retDict['summary'] + ' ' + feed.get('summary')
+        return retDict
 
     def calculateCosine(self, A, B, AND):
         return (AND)/math.sqrt(A*B)
