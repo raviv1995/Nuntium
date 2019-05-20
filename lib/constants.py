@@ -1,8 +1,8 @@
 NUNTIUM_VERSION = '0.1 (Alpha)'
 COSINE_THRESHOLD = 0.15
 DICE_THRESHOLD = 0.15
-COSINE_RE_THRESHOLD = 0.35
-DICE_RE_THRESHOLD = 0.35
+COSINE_RE_THRESHOLD = 0.38
+DICE_RE_THRESHOLD = 0.38
 
 def clearFile():
 	with open('/home/pbs/Desktop/feed', 'w+') as f:

@@ -19,6 +19,7 @@ class Cluster:
         # print(self.flatList)
         self.clusterArticles()
         self.clusterClusters()
+        self.removeSameArticle()
         writeClustersToFile(self.clusters)
     
     def flattenList(self):
@@ -69,13 +70,27 @@ class Cluster:
         # writeToFile(sorted(self.flatList, key = lambda i: i['cluster']))
         # writeClustersToFile(self.clusters)
 
+    def areArticlesSame(self, feedA, feedB):
+        if feedA.get('title') == feedB.get('title') and feedA.get('summary') == feedB.get('summary'):
+            return True
+        return False
+
+    def removeSameArticle(self):
+        for cluster in self.clusters:
+            for feedA in cluster:
+                indexA = cluster.index(feedA)
+                for feedB in cluster:
+                    indexB = cluster.index(feedB)
+                    if indexA == indexB:
+                        continue
+                    if self.areArticlesSame(feedA,feedB):
+                        cluster.remove(feedB)
+
     def clusterClusters(self):
         for clusterA in self.clusters:
             indexA = self.clusters.index(clusterA)
             feedA = self.articlefy(clusterA)
             for clusterB in self.clusters:
-                if clusterA ==  clusterB:
-                    continue
                 feedB = self.articlefy(clusterB)
                 articleMatrix = self.makeMatrix(feedA, feedB)
                 AND = 0
